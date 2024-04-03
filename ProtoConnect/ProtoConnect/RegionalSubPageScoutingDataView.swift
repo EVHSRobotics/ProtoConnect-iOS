@@ -8,6 +8,7 @@
 import SwiftUI
 import Neumorphic
 import FirebaseFirestore
+import ActivityIndicatorView
 
 struct RegionalSubPageScoutingDataView: View {
     
@@ -17,6 +18,7 @@ struct RegionalSubPageScoutingDataView: View {
     @State var regionalKey: String
     @State var matchNumber: String
     @State var assignments: [String]
+    @State var currentScouterAssigned: String = ""
     
     @State var autoSpeakerNotesMade: Int = 0
     @State var autoSpeakerNotesAttempted: Int = 0
@@ -26,7 +28,11 @@ struct RegionalSubPageScoutingDataView: View {
     @State var teleopSpeakerNotesAttempted: Int = 0
     @State var teleopAmpNotesMade: Int = 0
     @State var teleopAmpNotesAttempted: Int = 0
-    
+    @State var shouldShowLoadedSpinner: Bool = true
+
+    @State var penalties = 0
+    @State var defenseRating = 0
+
     @State var robotHang: Bool = false
     @State var robotTrapScore: Bool = false
     @State var robotAmplify: Bool = false
@@ -39,21 +45,36 @@ struct RegionalSubPageScoutingDataView: View {
     
     var body: some View {
         ScrollView {
+            if !shouldShowLoadedSpinner {
+                
             
-            HStack {
-                Text("Team \(currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))")
-                    .font(.largeTitle)
-                    .bold()
-                    .foregroundColor(Color.black)
-                    .padding()
+            
+                VStack {
+                    HStack {
+                        Text("Team \(currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))")
+                            .font(.largeTitle)
+                            .bold()
+                            .foregroundColor(Color.black)
+                            .padding([.horizontal, .top])
+                        
+                        
+                        
+                        
+                        
+                        Spacer()
+                    }
+                    Text("Scouter: \(currentScouterAssigned)")
+                        .font(.headline)
+                        .bold()
+                        .foregroundColor(Color.black)
+                        .padding([.horizontal, .bottom])
+                        .padding(.top, 1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 
-                
-                
-                
-                Spacer()
-            }
             VStack {
-               
+             
+                    
                 if (qrCodeVisible){
                     QRcodeGenerate(data: $qrCodeData)
                 }
@@ -83,6 +104,7 @@ struct RegionalSubPageScoutingDataView: View {
                     }
                     updateRegionalData()
                     updateQRCode()
+
                     //                        ProtoFirebase.teamCollection.document("\(teamNumber)").collection(regionalKey).document(matchKey).collection(newValue).document(currentPlayType).addSnapshotListener { oneDocSnapshot, oneDocError in
                     //                            updateRegionalData()
                     //                        }
@@ -106,6 +128,8 @@ struct RegionalSubPageScoutingDataView: View {
                         return
                     }
                     updateQRCode()
+                    ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
+
                     //                        ProtoFirebase.teamCollection.document("\(teamNumber)").collection(regionalKey).document(matchKey).collection(currentSelectedTeam).document(newValue).addSnapshotListener { oneDocSnapshot, oneDocError in
                     //                            updateRegionalData()
                     //                        }
@@ -151,8 +175,9 @@ struct RegionalSubPageScoutingDataView: View {
                             }
                             .padding(.horizontal)
                             .onChange(of: autoSpeakerNotesMade, perform: { newValue in
-                                
-                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "D", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+//                                ProtoSheets.setRowDataTeamNumber(data: [], matchNumber: matchNumber, teamNumber: currentSelectedTeam)
+//                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "D", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                                ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
                                 updateQRCode()
                                 
                             })
@@ -173,7 +198,8 @@ struct RegionalSubPageScoutingDataView: View {
                             }
                             .padding(.horizontal)
                             .onChange(of: teleopSpeakerNotesMade, perform: { newValue in
-                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "H", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+//                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "H", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                                ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
                                 updateQRCode()
                                 
                             })
@@ -198,7 +224,8 @@ struct RegionalSubPageScoutingDataView: View {
                                 
                             }
                             .onChange(of: autoSpeakerNotesAttempted, perform: { newValue in
-                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "C", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+//                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "C", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                                ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
                                 updateQRCode()
                             })
                         }
@@ -217,7 +244,8 @@ struct RegionalSubPageScoutingDataView: View {
                                 
                             }
                             .onChange(of: teleopSpeakerNotesAttempted, perform: { newValue in
-                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "G", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+//                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "G", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                                ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
                                 updateQRCode()
                             })
                         }
@@ -267,7 +295,8 @@ struct RegionalSubPageScoutingDataView: View {
                             .padding(.horizontal)
                             .onChange(of: autoAmpNotesMade, perform: { newValue in
                                 
-                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "F", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+//                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "F", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                                ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
                                 updateQRCode()
                                 
                             })
@@ -289,7 +318,8 @@ struct RegionalSubPageScoutingDataView: View {
                             .padding(.horizontal)
                             .onChange(of: teleopAmpNotesMade, perform: { newValue in
                                 
-                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "J", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+//                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "J", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                                ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
                                 updateQRCode()
                                 
                             })
@@ -314,7 +344,8 @@ struct RegionalSubPageScoutingDataView: View {
                                 
                             }
                             .onChange(of: autoAmpNotesAttempted, perform: { newValue in
-                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "E", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+//                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "E", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                                ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
                                 updateQRCode()
                                 
                             })
@@ -333,7 +364,8 @@ struct RegionalSubPageScoutingDataView: View {
                                 
                             }
                             .onChange(of: teleopAmpNotesAttempted, perform: { newValue in
-                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "I", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+//                                ProtoSheets.setRowTeamNumberData(data: newValue, column: "I", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                                ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
                                 updateQRCode()
                                 
                             })
@@ -348,6 +380,82 @@ struct RegionalSubPageScoutingDataView: View {
                 Spacer()
             }.frame(maxWidth: .infinity)
                 .frame(height: 180)
+                .background(LinearGradient(colors: [Color(red: 0.97, green: 0.81, blue: 0.41), Color(red: 0.98, green: 0.67, blue: 0.49)], startPoint: .leading, endPoint: .trailing))
+                .cornerRadius(20)
+                .padding(10)
+                .shadow(radius: 2)
+            VStack {
+                HStack {
+                    Text("Penalties")
+                        .font(.system(size: 25, weight: .bold, design: .rounded))
+                        .bold()
+                        .foregroundColor(Color.black)
+                        .padding()
+                    
+                    
+                    Spacer()
+                }
+                VStack {
+                    VStack {
+                        Stepper {
+                            Text("\(penalties) Penalties")
+                                .bold()
+                        } onIncrement: {
+                            penalties += 1
+                        } onDecrement: {
+                            if (penalties > 0) {
+                                penalties -= 1
+                            }
+                        } onEditingChanged: { oneEditing in
+                            
+                        }
+                        .padding(.horizontal)
+                        .onChange(of: penalties, perform: { newValue in
+                        ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
+//                            ProtoSheets.setRowTeamNumberData(data: newValue, column: "D", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                            
+                            updateQRCode()
+                            
+                        })
+                    }
+                }
+                HStack {
+                    Text("Defensive Rating")
+                        .font(.system(size: 25, weight: .bold, design: .rounded))
+                        .bold()
+                        .foregroundColor(Color.black)
+                        .padding()
+                    
+                    
+                    Spacer()
+                }
+                VStack {
+                    VStack {
+                        Stepper {
+                            Text("\(defenseRating) Rating")
+                                .bold()
+                        } onIncrement: {
+                            if (defenseRating < 5) {
+                                defenseRating += 1
+                            }
+                        } onDecrement: {
+                            if (defenseRating > 0) {
+                                defenseRating -= 1
+                            }
+                        } onEditingChanged: { oneEditing in
+                            
+                        }
+                        .padding(.horizontal)
+                        .onChange(of: defenseRating, perform: { newValue in
+                        ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
+//                            ProtoSheets.setRowTeamNumberData(data: newValue, column: "D", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                            updateQRCode()
+                            
+                        })
+                    }
+                }
+            }.frame(maxWidth: .infinity)
+                .frame(height: 250)
                 .background(LinearGradient(colors: [Color(red: 0.97, green: 0.81, blue: 0.41), Color(red: 0.98, green: 0.67, blue: 0.49)], startPoint: .leading, endPoint: .trailing))
                 .cornerRadius(20)
                 .padding(10)
@@ -371,7 +479,8 @@ struct RegionalSubPageScoutingDataView: View {
                         }
                         .padding(.horizontal)
                         .onChange(of: robotCoopertition, perform: { newValue in
-                            ProtoSheets.setRowTeamNumberData(data: newValue, column: "P", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+//                            ProtoSheets.setRowTeamNumberData(data: newValue, column: "P", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                            ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
                             updateQRCode()
                         })
                         Text("A ROBOT is DOCKED if it is contacting only the CHARGE STATION and/or other items also directly or transitively fully supported by the CHARGE STATION.")
@@ -393,7 +502,8 @@ struct RegionalSubPageScoutingDataView: View {
                         }
                         .padding(.horizontal)
                         .onChange(of: robotHang, perform: { newValue in
-                            ProtoSheets.setRowTeamNumberData(data: newValue, column: "L", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+//                            ProtoSheets.setRowTeamNumberData(data: newValue, column: "L", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                            ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
                             updateQRCode()
                         })
                         Text("The state of the ROBOT if the following are true: the CHARGE STATION is LEVEL & all ALLIANCE ROBOTS contacting the CHARGE STATION are DOCKED.")
@@ -416,7 +526,8 @@ struct RegionalSubPageScoutingDataView: View {
                         }
                         .padding(.horizontal)
                         .onChange(of: robotAmplify, perform: { newValue in
-                            ProtoSheets.setRowTeamNumberData(data: newValue, column: "N", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+//                            ProtoSheets.setRowTeamNumberData(data: newValue, column: "N", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                            ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
                             updateQRCode()
                             
                         })
@@ -440,7 +551,8 @@ struct RegionalSubPageScoutingDataView: View {
                         }
                         .padding(.horizontal)
                         .onChange(of: robotHarmony, perform: { newValue in
-                            ProtoSheets.setRowTeamNumberData(data: newValue, column: "O", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+//                            ProtoSheets.setRowTeamNumberData(data: newValue, column: "O", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                            ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
                             updateQRCode()
                             
                         })
@@ -466,7 +578,8 @@ struct RegionalSubPageScoutingDataView: View {
                         .padding(.horizontal)
                         .onChange(of: robotTrapScore, perform: { newValue in
                             
-                            ProtoSheets.setRowTeamNumberData(data: newValue, column: "M", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+//                            ProtoSheets.setRowTeamNumberData(data: newValue, column: "M", matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: ""))
+                            ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
                             updateQRCode()
                             
                         })
@@ -494,8 +607,19 @@ struct RegionalSubPageScoutingDataView: View {
             .shadow(radius: 2)
             
             Spacer()
-            
+            }
+            else {
+                VStack {
+                    Text("Loading...")
+                        .font(.headline)
+                    ActivityIndicatorView(isVisible: $shouldShowLoadedSpinner, type: .arcs(count: 3, lineWidth: 2))
+                        .frame(width: 50, height: 50)
+                }
+            }
         }
+        .onDisappear(perform: {
+            ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
+        })
         .onAppear {
             if !ProtoFirebase.isAdmin {
                 redTeams.removeAll { oneString in
@@ -520,8 +644,23 @@ struct RegionalSubPageScoutingDataView: View {
                 Button(action: {
                     updateQRCode()
                     qrCodeVisible.toggle()
+                    ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
+
                 } , label: {
                     Image(systemName: "qrcode")
+                        .bold()
+                        .foregroundStyle(Color.blue)
+                        
+                })
+            }
+            ToolbarItem {
+                Button(action: {
+                    updateQRCode()
+                    ProtoSheets.setRowDataTeamNumber(data: generateScoutData(), matchNumber: matchNumber, teamNumber: currentSelectedTeam)
+
+                } , label: {
+                    Image(systemName: "checkmark")
+                        .bold()
                         .foregroundStyle(Color.black)
                         
                 })
@@ -530,7 +669,7 @@ struct RegionalSubPageScoutingDataView: View {
         
     }
     func updateQRCode() {
-        qrCodeData = "\(matchNumber);\(currentSelectedTeam);\(autoSpeakerNotesMade);\(autoSpeakerNotesAttempted);\(autoAmpNotesMade);\(autoAmpNotesAttempted);\(teleopSpeakerNotesMade);\(teleopSpeakerNotesAttempted);\(teleopAmpNotesMade);\(teleopAmpNotesAttempted);\(robotHang);\(robotTrapScore);\(robotAmplify);\(robotCoopertition);\(robotHarmony)"
+        qrCodeData = "\(matchNumber);\(currentSelectedTeam);\(autoSpeakerNotesMade);\(autoSpeakerNotesAttempted);\(autoAmpNotesMade);\(autoAmpNotesAttempted);\(teleopSpeakerNotesMade);\(teleopSpeakerNotesAttempted);\(teleopAmpNotesMade);\(teleopAmpNotesAttempted); ;\(robotHang);\(robotTrapScore);\(robotAmplify);\(robotCoopertition);\(robotHarmony)"
     }
     func returnData(str : String)->Data{
         let filter = CIFilter(name: "CIQRCodeGenerator")
@@ -544,7 +683,12 @@ struct RegionalSubPageScoutingDataView: View {
 
     
     
+    func generateScoutData() -> [String] {
+        return ["\(matchNumber)", "\(autoSpeakerNotesMade)", "\(autoSpeakerNotesAttempted)", "\(autoAmpNotesMade)", "\(autoAmpNotesAttempted)", "\(teleopSpeakerNotesMade)", "\(teleopSpeakerNotesAttempted)", "\(teleopAmpNotesMade)", "\(teleopAmpNotesAttempted)", "\(defenseRating)", "\(String(robotCoopertition).uppercased())", "\(String(robotAmplify).uppercased())", "\(String(robotHang).uppercased())", "\(String(robotHarmony).uppercased())", "\(String(robotTrapScore).uppercased())", "\(penalties)"]
+    }
     func updateRegionalData() {
+        shouldShowLoadedSpinner = true
+        currentScouterAssigned = ""
         ProtoSheets.getRowTeamNumberData(matchNumber: String(matchNumber), teamNumber: currentSelectedTeam.replacingOccurrences(of: "frc", with: "")) { dataRetrieved in
             autoSpeakerNotesMade = Int(dataRetrieved["autoSpeakerMade"] as? Double ?? 0)
             autoSpeakerNotesAttempted = Int(dataRetrieved["autoSpeakerAtp"] as? Double ?? 0)
@@ -560,6 +704,13 @@ struct RegionalSubPageScoutingDataView: View {
             robotCoopertition = dataRetrieved["coopertition"] as? Bool ?? false
             robotAmplify = dataRetrieved["amplify"] as? Bool ?? false
             robotHarmony = dataRetrieved["harmony"] as? Bool ?? false
+            
+            shouldShowLoadedSpinner = false
+        }
+        ProtoSheets.getScoutingAssignmentPerson(matchNumber: String(matchNumber), teamNumber: currentSelectedTeam) { scouter in
+                currentScouterAssigned = scouter
+            
+
         }
         //        ProtoFirebase.retrieveCompetitionKeyMatch(playType: currentPlayType, regionalKey: regionalKey, matchKey: matchKey, teamNum: currentSelectedTeam) { protoData in
         //

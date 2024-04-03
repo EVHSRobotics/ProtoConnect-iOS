@@ -9,7 +9,7 @@ import Foundation
 
 struct ProtoSheets {
     
-    static let sheetID = "1kQ2fhadKcKZUZJ7NF9JNsHLgsa1BA7aZa3FT94kjTyo"
+    static let sheetID = "1F72BvdQSiPbuvbp6fjnM4NE8L8gXx-cDFQZ4VR5Rv78"
     
     
     static func generateRefreshToken(completion: @escaping ((String?) -> ())) {
@@ -66,7 +66,9 @@ struct ProtoSheets {
                 print(dataJSON)
                 guard let dataJSONValues = dataJSON["values"] as? [[String]] else { return }
                 if (dataJSONValues.count > 0) {
-                    var teamRow = dataJSONValues[0].firstIndex(of: matchNumber) ?? -1
+                    let teamRow = (dataJSONValues[0].map({ oneString in
+                        return oneString.replacingOccurrences(of: "Quals ", with: "")
+                    })).firstIndex(of: matchNumber) ?? -1
                     
                     completion(teamRow)
                     
@@ -164,6 +166,51 @@ struct ProtoSheets {
             
         }
     }
+    static func getScoutingAssignmentPerson(matchNumber: String, teamNumber: String, completion: @escaping ((String) -> ())) {
+        generateRefreshToken { bearerToken in
+            if let dataBearerToken = bearerToken {
+                
+                    var request = URLRequest(url: URL(string: "https://sheets.googleapis.com/v4/spreadsheets/\(sheetID)/values/SCOUTING_ASSIGNMENTS!A1:Z1000/?majorDimension=ROWS")!,timeoutInterval: Double.infinity)
+                    request.addValue("Bearer \(dataBearerToken)", forHTTPHeaderField: "Authorization")
+                    
+                    request.httpMethod = "GET"
+                    
+                    URLSession.shared.dataTask(with: request) { data, response, error in
+                        do {
+                            guard let data = data else {
+                                print(String(describing: error))
+                                return
+                            }
+                            guard let dataJSON = try JSONSerialization.jsonObject(with: data) as? [String:Any] else { return }
+                            print(dataJSON)
+                            guard var dataJSONValues = dataJSON["values"] as? [[String]] else { return }
+                            let newJSONVals = dataJSONValues.map { oneArray in
+                                return oneArray.first ?? "Error"
+                            }
+                                let allRowData = newJSONVals.first { oneString in
+                                    return oneString.contains(teamNumber + " Match\(matchNumber)")
+                                }
+                                
+                            guard let userID = allRowData?.replacingOccurrences(of: " " + teamNumber + " Match\(matchNumber)", with: "") else { return }
+                                
+                            ProtoFirebase.getIDProtoUser(id: userID) { oneProtoUser in
+                                if let tempUser = oneProtoUser {
+                                    completion(tempUser.firstName + " " + tempUser.lastName)
+                                }
+                            }
+                            
+                            print(dataJSONValues)
+                        }
+                        catch {
+                            print(error)
+                            completion("ERROR")
+                        }
+                    }.resume()
+                }
+            
+        }
+    }
+    
     static func getRowTeamNumberData(matchNumber: String, teamNumber: String, completion: @escaping (([String:Any]) -> ())) {
         generateRefreshToken { bearerToken in
             if let dataBearerToken = bearerToken {
@@ -227,6 +274,26 @@ struct ProtoSheets {
                                         "coopertition": coopertition
                                     ])
                                 }
+                                else {
+                                    
+                                    completion([
+                                        "matchNumber": matchNumber,
+                                        "penalties": 0,
+                                        "autoSpeakerAtp": 0,
+                                        "autoSpeakerMade": 0,
+                                        "autoAmpAtp": 0,
+                                        "autoAmpMade": 0,
+                                        "teleopSpeakerAtp": 0,
+                                        "teleopSpeakerMade": 0,
+                                        "teleopAmpAtp": 0,
+                                        "teleopAmpMade": 0,
+                                        "teleopDefensiveRating": 0,
+                                        "hang": false,
+                                        "trapScore": false,
+                                        "amplify": false,
+                                        "harmony": false,
+                                        "coopertition": false])
+                                }
                                 
                             }
                             print(dataJSONValues)
@@ -274,33 +341,37 @@ struct ProtoSheets {
         }
     }
     static func setRowDataTeamNumber(data: [String], matchNumber: String, teamNumber: String) {
-        generateRefreshToken { bearerToken in
-            if let dataBearerToken = bearerToken {
-                
-                checkAvailableRowProtoSheet(bearerToken: dataBearerToken, teamNumber: teamNumber, matchNumber: matchNumber) { teamRowNumber in
-                    if (teamRowNumber == -1) {
-                        return
+        if (!ProtoFirebase.isAdmin) {
+            generateRefreshToken { bearerToken in
+                if let dataBearerToken = bearerToken {
+                    let tempTeamNumber = teamNumber.replacingOccurrences(of: "frc", with: "")
+                    
+                    checkAvailableRowProtoSheet(bearerToken: dataBearerToken, teamNumber: tempTeamNumber, matchNumber: matchNumber) { teamRowNumber in
+                        if (teamRowNumber == -1) {
+                            return
+                        }
+                        let parameters = "{\n    \"range\": \"\(tempTeamNumber)!A\(teamRowNumber+1):P\(teamRowNumber+1)\",\n    \"majorDimension\": \"ROWS\",\n    \"values\": [\n      \(data)\n    ]\n  }"
+                        let postData = parameters.data(using: .utf8)
+                        
+                        var request = URLRequest(url: URL(string: "https://sheets.googleapis.com/v4/spreadsheets/\(sheetID)/values/\(tempTeamNumber)!A\(teamRowNumber+1):P\(teamRowNumber+1)?valueInputOption=USER_ENTERED&includeValuesInResponse=false")!,timeoutInterval: Double.infinity)
+                        request.addValue("Bearer \(dataBearerToken)", forHTTPHeaderField: "Authorization")
+                        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+                        
+                        request.httpMethod = "PUT"
+                        request.httpBody = postData
+                        
+                        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                            guard let data = data else {
+                                print(String(describing: error))
+                                return
+                            }
+                            print(String(data: data, encoding: .utf8)!)
+                        }
+                        
+                        task.resume()
+                        
                     }
-                    let parameters = "{\n    \"range\": \"\(teamNumber)!A\(teamRowNumber+1):P\(teamRowNumber+1)\",\n    \"majorDimension\": \"ROWS\",\n    \"values\": [\n      \(data)\n    ]\n  }"
-                    let postData = parameters.data(using: .utf8)
-
-                    var request = URLRequest(url: URL(string: "https://sheets.googleapis.com/v4/spreadsheets/\(sheetID)/values/\(teamNumber)!A\(teamRowNumber+1):P\(teamRowNumber+1)?valueInputOption=USER_ENTERED&includeValuesInResponse=false")!,timeoutInterval: Double.infinity)
-                    request.addValue("Bearer \(dataBearerToken)", forHTTPHeaderField: "Authorization")
-                    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-
-                    request.httpMethod = "PUT"
-                    request.httpBody = postData
-
-                    let task = URLSession.shared.dataTask(with: request) { data, response, error in
-                      guard let data = data else {
-                        print(String(describing: error))
-                        return
-                      }
-                      print(String(data: data, encoding: .utf8)!)
-                    }
-
-                    task.resume()
-
+                    
                 }
             }
         }

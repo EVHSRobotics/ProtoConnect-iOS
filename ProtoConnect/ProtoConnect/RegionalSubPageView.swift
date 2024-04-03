@@ -10,6 +10,7 @@ import FancyScrollView
 import MapKit
 import CoreLocation
 import CodeScanner
+import ActivityIndicatorView
 
 struct RegionalSubPageView: View {
     
@@ -21,70 +22,88 @@ struct RegionalSubPageView: View {
     @State var finalAssignments: [String] = []
     @State var searchBarProto: String = ""
     @State var scouterScanner = false
-    
+    @State var shouldShowLoadedSpinner: Bool = true
+
     var body: some View {
         VStack {
-            FancyScrollView(title: locationName, titleColor: Color.blue, scrollUpHeaderBehavior: .parallax) {
+            
+            FancyScrollView(title: locationName, titleColor: Color.black, scrollUpHeaderBehavior: .parallax) {
                 ScoutingMapView(focusedLocationCoord: location)
                     .padding(.bottom, -25)
             } content: {
                 VStack {
-                    Text(regionalName)
-                        .font(.system(size: 30, weight: .bold, design: .rounded))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    HStack {
-                        Image(systemName: "magnifyingglass").foregroundColor(Color.Neumorphic.secondary).font(.body).bold()
-                        TextField("Search Matches", text: $searchBarProto)
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 10)
-                    .background(RoundedRectangle(cornerRadius: 30).fill(Color.Neumorphic.main).softInnerShadow(RoundedRectangle(cornerRadius: 30), darkShadow: Color.Neumorphic.darkShadow, lightShadow: Color.Neumorphic.lightShadow, spread: 0.05, radius: 2))
-                    
-                    if ProtoFirebase.isAdmin {
-                        Button {
-                            ProtoSheets.generateScoutingTeam(competitionKey: competitionKey)
-                        } label: {
-                       
-                            HStack {
-                              
-                                Text("Generate Scouting Assignments")
-                                    .foregroundColor(.black)
-                                    .bold()
+                    if !shouldShowLoadedSpinner {
+                        VStack {
+                            Text(regionalName)
+                                .font(.system(size: 30, weight: .bold, design: .rounded))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            if (ProtoFirebase.isAdmin) {
+                                HStack {
+                                    Image(systemName: "magnifyingglass").foregroundColor(Color.Neumorphic.secondary).font(.body).bold()
+                                    TextField("Search Matches", text: $searchBarProto)
+                                }
+                                .padding(.horizontal)
+                                .padding(.vertical, 10)
+                                .background(RoundedRectangle(cornerRadius: 30).fill(Color.Neumorphic.main).softInnerShadow(RoundedRectangle(cornerRadius: 30), darkShadow: Color.Neumorphic.darkShadow, lightShadow: Color.Neumorphic.lightShadow, spread: 0.05, radius: 2))
+                  
+                                Button {
+                                    ProtoSheets.generateScoutingTeam(competitionKey: competitionKey)
+                                } label: {
+                                    
+                                    HStack {
+                                        
+                                        Text("Generate Scouting Assignments")
+                                            .foregroundColor(.black)
+                                            .bold()
+                                    }
+                                    .padding(.horizontal)
+                                }
+                                
+                                .padding(.vertical, 20)
+                                .padding(.horizontal)
+                                .background(RoundedRectangle(cornerRadius: 30).stroke(Color.black, lineWidth: 2).foregroundColor(.clear))
+                                Button {
+                                    scouterScanner = true
+                                } label: {
+                                    
+                                    HStack {
+                                        
+                                        Text("Scan Scouters Data")
+                                            .foregroundColor(.black)
+                                            .bold()
+                                    }
+                                    .padding(.horizontal)
+                                }
+                                
+                                .padding(.vertical, 20)
+                                .padding(.horizontal)
+                                .background(RoundedRectangle(cornerRadius: 30).stroke(Color.black, lineWidth: 2).foregroundColor(.clear))
+                                
                             }
-                            .padding(.horizontal)
-                        }
-                        
-                        .padding(.vertical, 20)
-                        .padding(.horizontal)
-                        .background(RoundedRectangle(cornerRadius: 30).stroke(Color.black, lineWidth: 2).foregroundColor(.clear))
-                        Button {
-                            scouterScanner = true
-                        } label: {
-                       
-                            HStack {
-                              
-                                Text("Scan Scouters Data")
-                                    .foregroundColor(.black)
-                                    .bold()
+                            if (filteredProtoMatches.isEmpty) {
+                                Text("No Scouting Assignments")
+                                    .font(.headline)
                             }
-                            .padding(.horizontal)
+                            else {
+                                ForEach(0..<filteredProtoMatches.count, id: \.self) { oneProtoMatch in
+                                    
+                                    RegionalMatchView(matchInfo: filteredProtoMatches[oneProtoMatch], assignments: finalAssignments)
+                                }
+                            }
                         }
-                        
-                        .padding(.vertical, 20)
-                        .padding(.horizontal)
-                        .background(RoundedRectangle(cornerRadius: 30).stroke(Color.black, lineWidth: 2).foregroundColor(.clear))
-
+                        .padding()
                     }
-                    ForEach(0..<filteredProtoMatches.count, id: \.self) { oneProtoMatch in
-                       
-                        RegionalMatchView(matchInfo: filteredProtoMatches[oneProtoMatch], assignments: finalAssignments)
-
-                        
-
+                    else {
+                        VStack {
+                            Text("Loading...")
+                                .font(.headline)
+                            ActivityIndicatorView(isVisible: $shouldShowLoadedSpinner, type: .arcs(count: 3, lineWidth: 2))
+                                .frame(width: 50, height: 50)
+                        }
+                        .padding(.top)
                     }
                 }
-                .padding()
             }
             
         }
@@ -96,6 +115,8 @@ struct RegionalSubPageView: View {
                     let matchNum = codeComps.removeFirst()
                     let teamNum = codeComps.removeFirst()
                     ProtoSheets.setRowDataTeamNumber(data: codeComps, matchNumber: matchNum, teamNumber: teamNum)
+                    
+                    scouterScanner = false
                 }
                 catch {
                     print(error)
@@ -130,9 +151,11 @@ struct RegionalSubPageView: View {
             }
         })
         .onAppear {
+            shouldShowLoadedSpinner = true
             if ProtoFirebase.isAdmin {
                 ProtoLookup.teamCompetitionMatches(competitionKey: competitionKey) { allProtoMatches in
                     filteredProtoMatches = allProtoMatches
+                    shouldShowLoadedSpinner = false
                 }
             }
             else {
@@ -154,6 +177,7 @@ struct RegionalSubPageView: View {
                             }
                             return false
                         })
+                        shouldShowLoadedSpinner = false
                         
                     }
                 }

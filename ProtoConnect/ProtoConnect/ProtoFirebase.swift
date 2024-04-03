@@ -150,6 +150,41 @@ struct ProtoFirebase {
         }
      
     }
+    static func getIDProtoUser(id: String, completion: @escaping ((ProtoUser?) -> ())) {
+        
+        userCollection.whereField("id", isEqualTo: id).getDocuments { docs, error in
+            if (error == nil) {
+                guard let protoDocs = docs else {
+                    completion(nil)
+                    return
+                }
+                if !(protoDocs.isEmpty) {
+                    
+                    guard let protoDocsData = protoDocs.documents.first?.data() else {
+                        completion(nil)
+                        return
+                    }
+                    let protoID = protoDocsData["id"] as? String ?? "ERROR"
+                    let protoFirst = protoDocsData["firstName"] as? String ?? "ERROR"
+                    let protoLast = protoDocsData["lastName"] as? String ?? "ERROR"
+                    let protoEmail = protoDocsData["email"] as? String ?? "ERROR"
+                    let protoTeamNum = protoDocsData["teamNum"] as? String ?? "-1"
+                    let protoTeamID = protoDocsData["teamID"] as? String ?? "-1"
+                    let protoTeamCode = protoDocsData["teamCode"] as? String ?? "-1"
+
+                   completion(ProtoUser(id: protoID, firstName: protoFirst, lastName: protoLast, email: protoEmail, teamNum: protoTeamNum, teamID: protoTeamID, teamCode: protoTeamCode))
+                    return
+                    
+                }
+                else {
+                    completion(nil)
+                }
+            }
+            else {
+                completion(nil)
+            }
+        }
+    }
     static func retrieveSignedInProtoUser() -> Bool {
         
         guard let protoUserDict = UserDefaults.standard.object(forKey: "user") as? [String:Any] else { return false }
