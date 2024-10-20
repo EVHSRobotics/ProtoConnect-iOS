@@ -1,0 +1,1 @@
+This is our Scouting app, we created it for our team, and to make it easier to view for our scouters! If you choose to use the app, please send us an email and if you would like include bugs and features to add!
